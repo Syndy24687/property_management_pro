@@ -76,6 +76,14 @@ class Unit extends Model
         return $this->morphMany(Document::class, 'documentable');
     }
 
+    /**
+     * Images attached to this unit (polymorphic).
+     */
+    public function images(): MorphMany
+    {
+        return $this->morphMany(Image::class, 'imageable')->orderBy('sort_order');
+    }
+
     // ─── Scopes ─────────────────────────────────────────────────────
 
     public function scopeAvailable($query)

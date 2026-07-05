@@ -78,20 +78,20 @@ class RoleAndPermissionSeeder extends Seeder
         ];
 
         foreach ($permissions as $permission) {
-            Permission::firstOrCreate(['name' => $permission, 'guard_name' => 'web']);
+            Permission::firstOrCreate(['name' => $permission, 'guard_name' => 'api']);
         }
 
         // ─── Create Roles & Assign Permissions ────────────────────
 
         // Super Admin — bypasses all checks via Gate::before
-        Role::firstOrCreate(['name' => 'super-admin', 'guard_name' => 'web']);
+        Role::firstOrCreate(['name' => 'super-admin', 'guard_name' => 'api']);
 
         // Admin — full operational access
-        $admin = Role::firstOrCreate(['name' => 'admin', 'guard_name' => 'web']);
+        $admin = Role::firstOrCreate(['name' => 'admin', 'guard_name' => 'api']);
         $admin->syncPermissions($permissions);
 
         // Manager — property management operations
-        $manager = Role::firstOrCreate(['name' => 'manager', 'guard_name' => 'web']);
+        $manager = Role::firstOrCreate(['name' => 'manager', 'guard_name' => 'api']);
         $manager->syncPermissions([
             'properties.view',
             'units.view', 'units.create', 'units.update',
@@ -105,7 +105,7 @@ class RoleAndPermissionSeeder extends Seeder
         ]);
 
         // Owner — manages own properties, units, leases, payments
-        $owner = Role::firstOrCreate(['name' => 'owner', 'guard_name' => 'web']);
+        $owner = Role::firstOrCreate(['name' => 'owner', 'guard_name' => 'api']);
         $owner->syncPermissions([
             'properties.view', 'properties.create', 'properties.update', 'properties.delete',
             'units.view', 'units.create', 'units.update', 'units.delete',
@@ -119,7 +119,7 @@ class RoleAndPermissionSeeder extends Seeder
         ]);
 
         // Tenant — limited access
-        $tenant = Role::firstOrCreate(['name' => 'tenant', 'guard_name' => 'web']);
+        $tenant = Role::firstOrCreate(['name' => 'tenant', 'guard_name' => 'api']);
         $tenant->syncPermissions([
             'leases.view',
             'invoices.view',
@@ -127,6 +127,16 @@ class RoleAndPermissionSeeder extends Seeder
             'maintenance.view', 'maintenance.create',
             'maintenance-comments.view', 'maintenance-comments.create',
             'documents.view', 'documents.create',
+        ]);
+
+        // Occupant — non-primary resident, view-only + maintenance
+        $occupant = Role::firstOrCreate(['name' => 'occupant', 'guard_name' => 'api']);
+        $occupant->syncPermissions([
+            'leases.view',
+            'invoices.view',
+            'maintenance.view', 'maintenance.create',
+            'maintenance-comments.view', 'maintenance-comments.create',
+            'documents.view',
         ]);
     }
 }

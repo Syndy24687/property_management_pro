@@ -16,7 +16,7 @@ class MaintenanceRequestRepository implements MaintenanceRequestRepositoryInterf
 
     public function all(array $filters = [], int $perPage = 15): LengthAwarePaginator
     {
-        $query = $this->model->with(['unit.property', 'tenant']);
+        $query = $this->model->with(['unit.property', 'tenant', 'category', 'assignee']);
 
         if (!empty($filters['status'])) {
             $query->where('status', $filters['status']);
@@ -32,6 +32,14 @@ class MaintenanceRequestRepository implements MaintenanceRequestRepositoryInterf
 
         if (!empty($filters['tenant_id'])) {
             $query->where('tenant_id', $filters['tenant_id']);
+        }
+
+        if (!empty($filters['category_id'])) {
+            $query->where('category_id', $filters['category_id']);
+        }
+
+        if (!empty($filters['assigned_to'])) {
+            $query->where('assigned_to', $filters['assigned_to']);
         }
 
         return $query->latest()->paginate($perPage);

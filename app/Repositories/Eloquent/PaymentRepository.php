@@ -16,7 +16,7 @@ class PaymentRepository implements PaymentRepositoryInterface
 
     public function all(array $filters = [], int $perPage = 15): LengthAwarePaginator
     {
-        $query = $this->model->with(['lease.tenant', 'lease.unit.property']);
+        $query = $this->model->with(['lease.tenant', 'lease.unit.property', 'invoice']);
 
         if (!empty($filters['status'])) {
             $query->where('status', $filters['status']);
@@ -24,6 +24,10 @@ class PaymentRepository implements PaymentRepositoryInterface
 
         if (!empty($filters['lease_id'])) {
             $query->where('lease_id', $filters['lease_id']);
+        }
+
+        if (!empty($filters['invoice_id'])) {
+            $query->where('invoice_id', $filters['invoice_id']);
         }
 
         if (!empty($filters['method'])) {

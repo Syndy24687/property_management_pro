@@ -7,23 +7,27 @@ use Illuminate\Http\Resources\Json\JsonResource;
 
 class PaymentResource extends JsonResource
 {
-    /**
-     * Transform the resource into an array.
-     */
     public function toArray(Request $request): array
     {
         return [
             'id'               => $this->id,
+            'lease_id'         => $this->lease_id,
+            'invoice_id'       => $this->invoice_id,
             'amount'           => $this->amount,
-            'payment_date'     => $this->payment_date?->toDateString(),
-            'due_date'         => $this->due_date?->toDateString(),
+            'payment_date'     => $this->payment_date?->format('Y-m-d'),
+            'due_date'         => $this->due_date?->format('Y-m-d'),
             'method'           => $this->method,
             'status'           => $this->status,
             'reference_number' => $this->reference_number,
+            'transaction_id'   => $this->transaction_id,
             'notes'            => $this->notes,
             'lease'            => new LeaseResource($this->whenLoaded('lease')),
-            'created_at'       => $this->created_at?->toISOString(),
-            'updated_at'       => $this->updated_at?->toISOString(),
+            'invoice'          => new InvoiceResource($this->whenLoaded('invoice')),
+            'received_by'      => $this->whenLoaded('receivedBy', fn() => [
+                'id'   => $this->receivedBy->id,
+                'name' => $this->receivedBy->name,
+            ]),
+            'created_at'       => $this->created_at,
         ];
     }
 }

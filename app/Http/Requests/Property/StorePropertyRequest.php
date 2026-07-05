@@ -23,6 +23,12 @@ class StorePropertyRequest extends FormRequest
             'description' => ['nullable', 'string'],
             'status'      => ['sometimes', 'in:active,inactive,under_maintenance'],
             'owner_id'    => ['sometimes', 'exists:users,id'],
+            'company_id'  => ['sometimes', 'exists:companies,id'],
+            'latitude'    => ['nullable', 'numeric', 'between:-90,90'],
+            'longitude'   => ['nullable', 'numeric', 'between:-180,180'],
+            'year_built'  => ['nullable', 'integer', 'min:1800', 'max:' . (date('Y') + 5)],
+            'images'      => ['sometimes', 'array', 'max:10'],
+            'images.*'    => ['image', 'max:5120'],
         ];
     }
 }

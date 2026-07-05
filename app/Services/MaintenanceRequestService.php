@@ -19,10 +19,10 @@ class MaintenanceRequestService
      */
     public function getAllRequests(array $filters = [], int $perPage = 15): LengthAwarePaginator
     {
-        $user = Auth::user();
+        $user = Auth::guard('api')->user();
 
-        // Tenants can only see their own maintenance requests
-        if ($user && $user->hasRole('tenant') && !$user->hasAnyRole(['super-admin', 'admin', 'owner'])) {
+        // Tenants/occupants can only see their own maintenance requests
+        if ($user && $user->hasAnyRole(['tenant', 'occupant']) && !$user->hasAnyRole(['super-admin', 'admin', 'owner', 'manager'])) {
             $filters['tenant_id'] = $user->id;
         }
 
@@ -44,7 +44,7 @@ class MaintenanceRequestService
     {
         // Auto-assign the authenticated tenant if not provided
         if (empty($data['tenant_id'])) {
-            $data['tenant_id'] = Auth::id();
+            $data['tenant_id'] = Auth::guard('api')->id();
         }
 
         return $this->maintenanceRepository->create($data);

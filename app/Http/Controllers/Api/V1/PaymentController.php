@@ -5,59 +5,66 @@ namespace App\Http\Controllers\Api\V1;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Payment\StorePaymentRequest;
 use App\Http\Resources\PaymentResource;
+use App\Models\Invoice;
+use App\Services\InvoiceService;
 use App\Services\PaymentService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
+use Illuminate\Support\Facades\DB;
 
 class PaymentController extends Controller
 {
     public function __construct(
-        protected PaymentService $paymentService
+        protected PaymentService $paymentService,
+        protected InvoiceService $invoiceService
     ) {}
 
-    /**
-     * Display a paginated list of payments.
-     *
-     * GET /api/v1/payments
-     */
     public function index(Request $request): AnonymousResourceCollection
     {
-        $filters = $request->only(['status', 'lease_id', 'method', 'from_date', 'to_date']);
-        $perPage = $request->integer('per_page', 15);
-
-        $payments = $this->paymentService->getAllPayments($filters, $perPage);
-
-        return PaymentResource::collection($payments);
+        $filters = $request->only(['status', 'lease_id', 'invoice_id', 'method', 'from_date', 'to_date']);
+        return PaymentResource::collection($this->paymentService->getAllPayments($filters, $request->integer('per_page', 15)));
     }
 
     /**
-     * Store a newly created payment.
-     *
      * POST /api/v1/payments
+     * Record a payment — auto-updates invoice balance if invoice_id is provided.
      */
     public function store(StorePaymentRequest $request): JsonResponse
     {
-        $payment = $this->paymentService->createPayment($request->validated());
+        $data = $request->validated();
+        $data['received_by'] = auth('api')->id();
 
-        return (new PaymentResource($payment))
-            ->response()
-            ->setStatusCode(201);
+        $payment = DB::transaction(function () use ($data) {
+            $payment = $this->paymentService->createPayment($data);
+
+            // Auto-update invoice balance
+            if (!empty($data['invoice_id'])) {
+                $invoice = Invoice::findOrFail($data['invoice_id']);
+                $this->invoiceService->recordPayment($invoice, $data['amount']);
+            }
+
+            return $payment;
+        });
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Payment recorded successfully.',
+            'data'    => new PaymentResource($payment->load(['lease.tenant', 'invoice'])),
+        ], 201);
     }
 
-    /**
-     * Display the specified payment.
-     *
-     * GET /api/v1/payments/{id}
-     */
     public function show(int $id): JsonResponse
     {
         $payment = $this->paymentService->getPayment($id);
 
         if (!$payment) {
-            return response()->json(['message' => 'Payment not found.'], 404);
+            return response()->json(['success' => false, 'message' => 'Payment not found.'], 404);
         }
 
-        return (new PaymentResource($payment))->response();
+        return response()->json([
+            'success' => true,
+            'data'    => new PaymentResource($payment->load(['lease.tenant', 'invoice'])),
+        ]);
     }
 }

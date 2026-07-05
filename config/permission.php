@@ -33,6 +33,12 @@ return [
 
     'enable_wildcard_permission' => false,
 
+    /*
+     * When using JWT (api guard), we still want Spatie to match
+     * roles/permissions that were seeded with guard_name = 'web'.
+     */
+    'default_guard_name' => 'api',
+
     'cache' => [
         'expiration_time' => \DateInterval::createFromDateString('24 hours'),
         'key'             => 'spatie.permission.cache',

@@ -15,12 +15,14 @@ class StorePaymentRequest extends FormRequest
     {
         return [
             'lease_id'         => ['required', 'exists:leases,id'],
+            'invoice_id'       => ['nullable', 'exists:invoices,id'],
             'amount'           => ['required', 'numeric', 'min:0.01'],
             'payment_date'     => ['nullable', 'date'],
             'due_date'         => ['required', 'date'],
             'method'           => ['sometimes', 'in:cash,bank_transfer,credit_card,check,online'],
             'status'           => ['sometimes', 'in:pending,completed,failed,refunded'],
             'reference_number' => ['nullable', 'string', 'max:100'],
+            'transaction_id'   => ['nullable', 'string', 'max:255'],
             'notes'            => ['nullable', 'string'],
         ];
     }

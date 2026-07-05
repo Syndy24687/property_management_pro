@@ -19,10 +19,10 @@ class PropertyService
      */
     public function getAllProperties(array $filters = [], int $perPage = 15): LengthAwarePaginator
     {
-        $user = Auth::user();
+        $user = Auth::guard('api')->user();
 
         // Owners can only see their own properties
-        if ($user && $user->hasRole('owner') && !$user->hasAnyRole(['super-admin', 'admin'])) {
+        if ($user && $user->hasRole('owner') && !$user->hasAnyRole(['super-admin', 'admin', 'manager'])) {
             $filters['owner_id'] = $user->id;
         }
 
@@ -44,7 +44,7 @@ class PropertyService
     {
         // Auto-assign the authenticated owner if not provided
         if (empty($data['owner_id'])) {
-            $data['owner_id'] = Auth::id();
+            $data['owner_id'] = Auth::guard('api')->id();
         }
 
         return $this->propertyRepository->create($data);

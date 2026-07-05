@@ -92,6 +92,14 @@ class Property extends Model
         return $this->morphMany(Document::class, 'documentable');
     }
 
+    /**
+     * Images attached to this property (polymorphic).
+     */
+    public function images(): MorphMany
+    {
+        return $this->morphMany(Image::class, 'imageable')->orderBy('sort_order');
+    }
+
     // ─── Scopes ─────────────────────────────────────────────────────
 
     public function scopeActive($query)

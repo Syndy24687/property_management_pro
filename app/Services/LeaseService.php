@@ -23,10 +23,10 @@ class LeaseService
      */
     public function getAllLeases(array $filters = [], int $perPage = 15): LengthAwarePaginator
     {
-        $user = Auth::user();
+        $user = Auth::guard('api')->user();
 
-        // Tenants can only see their own leases
-        if ($user && $user->hasRole('tenant') && !$user->hasAnyRole(['super-admin', 'admin', 'owner'])) {
+        // Tenants/occupants can only see their own leases
+        if ($user && $user->hasAnyRole(['tenant', 'occupant']) && !$user->hasAnyRole(['super-admin', 'admin', 'owner', 'manager'])) {
             $filters['tenant_id'] = $user->id;
         }
 
@@ -60,7 +60,6 @@ class LeaseService
         }
 
         return DB::transaction(function () use ($data) {
-            // Create the lease
             $lease = $this->leaseRepository->create($data);
 
             // If lease is active, mark the unit as occupied

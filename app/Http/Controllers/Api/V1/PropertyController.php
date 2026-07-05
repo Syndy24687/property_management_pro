@@ -7,6 +7,9 @@ use App\Http\Requests\Property\StorePropertyRequest;
 use App\Http\Requests\Property\UpdatePropertyRequest;
 use App\Http\Resources\PropertyResource;
 use App\Http\Resources\UnitResource;
+use App\Models\Image;
+use App\Models\Property;
+use App\Services\ImageUploadService;
 use App\Services\PropertyService;
 use App\Services\UnitService;
 use Illuminate\Http\JsonResponse;
@@ -16,13 +19,12 @@ use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 class PropertyController extends Controller
 {
     public function __construct(
-        protected PropertyService $propertyService,
-        protected UnitService     $unitService
+        protected PropertyService    $propertyService,
+        protected UnitService        $unitService,
+        protected ImageUploadService $imageService
     ) {}
 
     /**
-     * Display a paginated list of properties.
-     *
      * GET /api/v1/properties
      */
     public function index(Request $request): AnonymousResourceCollection
@@ -36,22 +38,25 @@ class PropertyController extends Controller
     }
 
     /**
-     * Store a newly created property.
-     *
      * POST /api/v1/properties
      */
     public function store(StorePropertyRequest $request): JsonResponse
     {
         $property = $this->propertyService->createProperty($request->validated());
 
-        return (new PropertyResource($property))
-            ->response()
-            ->setStatusCode(201);
+        // Handle image uploads
+        if ($request->hasFile('images')) {
+            $this->imageService->uploadMultiple($request->file('images'), $property);
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Property created successfully.',
+            'data'    => new PropertyResource($property->load('images')),
+        ], 201);
     }
 
     /**
-     * Display the specified property.
-     *
      * GET /api/v1/properties/{id}
      */
     public function show(int $id): JsonResponse
@@ -59,39 +64,47 @@ class PropertyController extends Controller
         $property = $this->propertyService->getProperty($id);
 
         if (!$property) {
-            return response()->json(['message' => 'Property not found.'], 404);
+            return response()->json(['success' => false, 'message' => 'Property not found.'], 404);
         }
 
-        return (new PropertyResource($property))->response();
+        return response()->json([
+            'success' => true,
+            'data'    => new PropertyResource($property->load(['images', 'units', 'propertyManagers.user'])),
+        ]);
     }
 
     /**
-     * Update the specified property.
-     *
      * PUT /api/v1/properties/{id}
      */
     public function update(UpdatePropertyRequest $request, int $id): JsonResponse
     {
         $property = $this->propertyService->updateProperty($id, $request->validated());
 
-        return (new PropertyResource($property))->response();
+        if ($request->hasFile('images')) {
+            $this->imageService->uploadMultiple($request->file('images'), $property);
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Property updated successfully.',
+            'data'    => new PropertyResource($property->load('images')),
+        ]);
     }
 
     /**
-     * Remove the specified property (soft delete).
-     *
      * DELETE /api/v1/properties/{id}
      */
     public function destroy(int $id): JsonResponse
     {
         $this->propertyService->deleteProperty($id);
 
-        return response()->json(['message' => 'Property deleted successfully.'], 200);
+        return response()->json([
+            'success' => true,
+            'message' => 'Property deleted successfully.',
+        ]);
     }
 
     /**
-     * Get units for a specific property.
-     *
      * GET /api/v1/properties/{id}/units
      */
     public function units(int $id): JsonResponse
@@ -99,7 +112,51 @@ class PropertyController extends Controller
         $units = $this->unitService->getUnitsByProperty($id);
 
         return response()->json([
-            'data' => UnitResource::collection($units),
+            'success' => true,
+            'data'    => UnitResource::collection($units),
+        ]);
+    }
+
+    /**
+     * POST /api/v1/properties/{id}/images
+     */
+    public function uploadImages(Request $request, int $id): JsonResponse
+    {
+        $request->validate([
+            'images'   => ['required', 'array', 'max:10'],
+            'images.*' => ['required', 'image', 'max:5120'],
+        ]);
+
+        $property = Property::findOrFail($id);
+        $images = $this->imageService->uploadMultiple($request->file('images'), $property);
+
+        return response()->json([
+            'success' => true,
+            'message' => count($images) . ' image(s) uploaded successfully.',
+            'data'    => collect($images)->map(fn($img) => [
+                'id'         => $img->id,
+                'url'        => $img->url,
+                'file_name'  => $img->file_name,
+                'is_primary' => $img->is_primary,
+            ]),
+        ], 201);
+    }
+
+    /**
+     * DELETE /api/v1/properties/{propertyId}/images/{imageId}
+     */
+    public function deleteImage(int $propertyId, int $imageId): JsonResponse
+    {
+        $image = Image::where('id', $imageId)
+            ->where('imageable_type', Property::class)
+            ->where('imageable_id', $propertyId)
+            ->firstOrFail();
+
+        $this->imageService->delete($image);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Image deleted successfully.',
         ]);
     }
 }
